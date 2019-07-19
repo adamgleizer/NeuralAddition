@@ -4,13 +4,13 @@ A recurrent neural network that learns to add digits by posing it as a sequence-
 
 Examples of this architecture in application include machine translation and text generation.
 
-Created without the use of any deep learning libraries, only NumPy and AutoGrad.
+Created without the use of any deep learning libraries, only NumPy and Autograd.
 
 # Using the file
 
-To train a model, instantiate a parameter dictionary such as:
+To train a model, instantiate a parameter dictionary like so:
 
-params = {'encoder': random_init(IN_SIZE, HIDDEN_SIZE), 'decoder': random_init(IN_SIZE, HIDDEN_SIZE)}.
+params = {'encoder': random_init(), 'decoder': random_init()}.
 
 Then simply call the training method, i.e:
 

@@ -131,17 +131,17 @@ def softmax(X, theta = 1.0, axis = None): #This portion isn't mine, credit to No
     if len(X.shape) == 1: p = p.flatten()
     return p
     
-def random_init(input_size, hidden_size): #Xavier initialization of the parameters
+def random_init(input_size=IN_SIZE, hidden_size=HIDDEN_SIZE): #Xavier initialization of the parameters
     return {'Wiz': np.random.normal(size=(input_size, hidden_size))*(np.sqrt(1/(input_size + hidden_size))),
             'Wir': np.random.normal(size=(input_size, hidden_size))*(np.sqrt(1/(input_size + hidden_size))),
             'Win': np.random.normal(size=(input_size, hidden_size))*(np.sqrt(1/(input_size + hidden_size))),
             'Whz': np.random.normal(size=(hidden_size, hidden_size))*(np.sqrt(1/(2*hidden_size))),
             'Whr': np.random.normal(size=(hidden_size, hidden_size))*(np.sqrt(1/(2*hidden_size))),
             'Whn': np.random.normal(size=(hidden_size, hidden_size))*(np.sqrt(1/(2*hidden_size))),
-            'bz': np.random.normal(size=HIDDEN_SIZE),
-            'br': np.random.normal(size=HIDDEN_SIZE),
-            'bg': np.random.normal(size=HIDDEN_SIZE),
-            'out': np.random.normal(size=(HIDDEN_SIZE, OUT_SIZE))}
+            'bz': np.random.normal(size=hidden_size),
+            'br': np.random.normal(size=hidden_size),
+            'bg': np.random.normal(size=hidden_size),
+            'out': np.random.normal(size=(hidden_size, OUT_SIZE))}
 
 #Basic GRU cell for the encoder/decoder
 class GRUCell(object):
