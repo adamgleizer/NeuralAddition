@@ -36,7 +36,8 @@ HIDDEN_SIZE = 128
 OUT_SIZE = len(vocab)
 BATCH_SIZE = 100
 EPOCHS = 100
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.001
+OPTIMIZER_TYPE = 'Adam'
 #maximum length of input 'integer+integer', integer length is DIGITS
 MAXLEN = 2*DIGITS + 1
 
@@ -131,7 +132,8 @@ def softmax(X, theta = 1.0, axis = None): #This portion isn't mine, credit to No
     if len(X.shape) == 1: p = p.flatten()
     return p
     
-def random_init(input_size=IN_SIZE, hidden_size=HIDDEN_SIZE): #Xavier initialization of the parameters
+def random_init(input_size=IN_SIZE, hidden_size=HIDDEN_SIZE, out_size=OUT_SIZE): 
+    #Xavier initialization of the parameters
     return {'Wiz': np.random.normal(size=(input_size, hidden_size))*(np.sqrt(1/(input_size + hidden_size))),
             'Wir': np.random.normal(size=(input_size, hidden_size))*(np.sqrt(1/(input_size + hidden_size))),
             'Win': np.random.normal(size=(input_size, hidden_size))*(np.sqrt(1/(input_size + hidden_size))),
@@ -141,10 +143,23 @@ def random_init(input_size=IN_SIZE, hidden_size=HIDDEN_SIZE): #Xavier initializa
             'bz': np.random.normal(size=hidden_size),
             'br': np.random.normal(size=hidden_size),
             'bg': np.random.normal(size=hidden_size),
-            'out': np.random.normal(size=(hidden_size, OUT_SIZE))}
+            'out': np.random.normal(size=(hidden_size, out_size))}
 
-#Basic GRU cell for the encoder/decoder
+def zero_init(input_size=IN_SIZE, hidden_size=HIDDEN_SIZE, out_size=OUT_SIZE):
+    #Zero initialization for the first and second moments of the Adam optimizer
+    return {'Wiz': np.zeros((input_size, hidden_size)),
+            'Wir': np.zeros((input_size, hidden_size)),
+            'Win': np.zeros((input_size, hidden_size)),
+            'Whz': np.zeros((hidden_size, hidden_size)),
+            'Whr': np.zeros((hidden_size, hidden_size)),
+            'Whn': np.zeros((hidden_size, hidden_size)),
+            'bz': np.zeros(hidden_size),
+            'br': np.zeros(hidden_size),
+            'bg': np.zeros(hidden_size),
+            'out': np.zeros((hidden_size, out_size))}
+    
 class GRUCell(object):
+    #Basic GRU cell for the encoder/decoder
     def __init__(self, params=random_init(IN_SIZE, HIDDEN_SIZE)):
         self.params = params
         
@@ -196,7 +211,8 @@ class RNNDecoder():
             outs = np.concatenate((outs, soft_max), axis=1)
         return -np.log(outs)
     
-def cross_entropy_loss(target, predictions): #averages the loss over each time step, then over the whole batch
+def cross_entropy_loss(target, predictions): 
+    #averages the loss over each time step, then over the whole batch
     transposed = np.transpose(target, axes=(0,2,1))
     prod = np.matmul(predictions, transposed)
     return np.mean(np.mean(np.diagonal(prod, axis1=-1, axis2=-2), axis=1))  
@@ -212,24 +228,63 @@ class loss(object):
             predictions = decoder.forward(self.y, encoder.forward(self.x))
             return cross_entropy_loss(self.y, predictions)
 
-def gd_step(cost, params_dict, lrate):
-    costgrad = grad(cost)
-    def update(A, B): 
-        #helper function to speed up runtime 
-        updated = {key: A[key] - B[key]*lrate for key in A.keys() if key in B.keys()}
+def update(old_dict, update_dict, update_factor): 
+        #helper function to speed up runtime of gradient descent optimizers
+        updated = {key: old_dict[key] - update_dict[key]*update_factor \
+                        for key in old_dict.keys() if key in update_dict.keys()}
         return updated
+
+def gd_step(cost, params_dict): 
+#Stochasic gradient descent step over a batch
+    costgrad = grad(cost)
     grad_dict = costgrad(params_dict)
     for key in params_dict:
         params_dict[key] = update(params_dict[key], grad_dict[key])
     return params_dict
 
-def train(params_dict):
+def adam_optimizer(cost, past_time_step, beta1=0.9, beta2=0.999, epsilon=10e-8):
+    #Adam (adaptive moment estimation) optimizer as developed by D. Kingma and J. Ba.
+    #Initialized with default settings from the original paper, https://arxiv.org/pdf/1412.6980.pdf
+    #Shout out to Jimmy for being a fantastic professor 
+    costgrad = grad(cost)
+    param_prev = past_time_step[0]
+    m_prev = past_time_step[1]
+    v_prev = past_time_step[2]
+    t = past_time_step[3] + 1
+    grad_dict = costgrad(param_prev)
+    #currently what I want to do in *theory*, just have to make it to work on dictionaries.
+    #going to attempt to reuse my update helper function from gd_step for that.
+   # m_curr = (beta1 * m_prev) + ((1-beta1) * grad_dict)
+   # v_curr = (beta2 * v_prev) + ((1-beta2) * (np.square(grad_dict)))
+    #Bias correction of m_curr, v_curr
+   # m_curr = m_curr / (1 - (beta1 ** t))
+   # v_curr = v_curr / (1 - (beta2 ** t))
+   # descent_dict = np.divide(m_curr, (np.sqrt(v_curr) + epsilon))
+   # update(param_prev, descent_dict)
+
+def train(params_dict, optimizer=OPTIMIZER_TYPE):
+    m = {'encoder': zero_init(), 'decoder': zero_init()}
+    v = {'encoder': zero_init(), 'decoder': zero_init()}
+    current_time_step = (params_dict, m, v, 0)
     for i in range(EPOCHS):
         if i % 10 == 0:
             print('epoch number ' + str(i))
         for j in range(NUM_BATCHES):
             cost = loss(x_train[j], y_train[j])
-            params_dict = gd_step(cost, params_dict, LEARNING_RATE)
+            #Feel like there's ways to clean up checking for which optimizer
+            #is chosen, but checking first would break D.R.Y (don't repeat yourself) on the loops,
+            #unless I seperate that portion into it's own function.
+            #Would be more modular. Also saves memory since I can avoid
+            #intializing m and v if SGD is selected. Try to restructure this on a future update.
+            if OPTIMIZER_TYPE == 'SGD':
+                params_dict = gd_step(cost, params_dict)
+                #In the future update gd_step to match the style of the Adam optimizer, 
+                #just prettier design.
+            elif OPTIMIZER_TYPE == 'Adam':
+                    current_time_step = adam_optimizer(cost, current_time_step)
+            else:
+                print('Please choose an optimizer from one of: SGD, Adam')
+                break
         batch_num = np.random.randint(0, 450)
         sample_num = np.random.randint(0, 100)
         print('Question: ' + str(table.decode(x_train[batch_num,sample_num][::-1])).strip())
