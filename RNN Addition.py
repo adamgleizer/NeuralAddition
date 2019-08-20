@@ -245,7 +245,7 @@ def gd_step(cost, params_dict):
 def adam_optimizer(cost, past_time_step, beta1=0.9, beta2=0.999, epsilon=10e-8):
     #Adam (adaptive moment estimation) optimizer as developed by D. Kingma and J. Ba.
     #Initialized with default settings from the original paper, https://arxiv.org/pdf/1412.6980.pdf
-    #Shout out to Jimmy for being a fantastic professor 
+    #Shout out to Jimmy for being a fantastic professor
     costgrad = grad(cost)
     params = past_time_step[0]
     m_prev = past_time_step[1]
