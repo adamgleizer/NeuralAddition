@@ -247,25 +247,29 @@ def adam_optimizer(cost, past_time_step, beta1=0.9, beta2=0.999, epsilon=10e-8):
     #Initialized with default settings from the original paper, https://arxiv.org/pdf/1412.6980.pdf
     #Shout out to Jimmy for being a fantastic professor 
     costgrad = grad(cost)
-    param_prev = past_time_step[0]
+    params = past_time_step[0]
     m_prev = past_time_step[1]
     v_prev = past_time_step[2]
     t = past_time_step[3] + 1
-    grad_dict = costgrad(param_prev)
-    #currently what I want to do in *theory*, just have to make it to work on dictionaries.
-    #going to attempt to reuse my update helper function from gd_step for that.
-   # m_curr = (beta1 * m_prev) + ((1-beta1) * grad_dict)
-   # v_curr = (beta2 * v_prev) + ((1-beta2) * (np.square(grad_dict)))
-    #Bias correction of m_curr, v_curr
-   # m_curr = m_curr / (1 - (beta1 ** t))
-   # v_curr = v_curr / (1 - (beta2 ** t))
-   # descent_dict = np.divide(m_curr, (np.sqrt(v_curr) + epsilon))
-   # update(param_prev, descent_dict)
+    grad_dict = costgrad(params)
+    m_curr = {'encoder':{}, 'decoder': {}}
+    v_curr = {'encoder':{}, 'decoder': {}}
+    update_rates = {'encoder':{}, 'decoder': {}}
+    for key in params:
+        for weights in params[key]:
+            m_curr[key][weights] = (beta1 * m_prev[key][weights]) + ((1-beta1) * grad_dict[key][weights])
+            m_curr[key][weights] = m_curr[key][weights] / (1 - (beta1 ** t)) #bias correction
+            v_curr[key][weights] = (beta2 * v_prev[key][weights]) + ((1-beta2) * (np.square(grad_dict[key][weights])))
+            v_curr[key][weights] = v_curr[key][weights] / (1 - (beta2 ** t))
+            update_rates[key][weights] = np.divide(m_curr[key][weights], (np.sqrt(v_curr[key][weights]) + epsilon))
+        params[key] = update(params[key], update_rates[key], LEARNING_RATE)
+    return [params, m_curr, v_curr, t]
+
 
 def train(params_dict, optimizer=OPTIMIZER_TYPE):
     m = {'encoder': zero_init(), 'decoder': zero_init()}
     v = {'encoder': zero_init(), 'decoder': zero_init()}
-    current_time_step = (params_dict, m, v, 0)
+    current_time_step = [params_dict, m, v, 0]
     for i in range(EPOCHS):
         if i % 10 == 0:
             print('epoch number ' + str(i))
