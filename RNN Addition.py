@@ -263,7 +263,7 @@ def adam_optimizer(cost, past_time_step, beta1=0.9, beta2=0.999, epsilon=10e-8):
             v_curr[key][weights] = v_curr[key][weights] / (1 - (beta2 ** t))
             update_rates[key][weights] = np.divide(m_curr[key][weights], (np.sqrt(v_curr[key][weights]) + epsilon))
         params[key] = update(params[key], update_rates[key], LEARNING_RATE)
-    return [params, m_curr, v_curr, t]
+    return [params, m_curr, v_curr, t] 
 
 
 def train(params_dict, optimizer=OPTIMIZER_TYPE):
