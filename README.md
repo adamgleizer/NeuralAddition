@@ -6,7 +6,8 @@ Examples of this architecture in application include machine translation and tex
 
 Created without the use of any deep learning libraries, only NumPy and Autograd.
 
-Work in progress.
+Mostly an educational adventure. Large neural network libraries such as PyTorch and TensorFlow are very useful in terms of removing 'cognitive overhead', but doing everything yourself at least once helps form a firm foundation of what goes on 'behind the scenes'.
+This leads to a far stronger ability to diagnose issues and problem-solve when using such libraries.
 
 # Using the file
 
